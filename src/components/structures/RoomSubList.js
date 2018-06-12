@@ -347,8 +347,14 @@ var RoomSubList = React.createClass({
         var label = this.props.collapsed ? null : this.props.label;
 
         let content;
-        if (this.state.sortedList.length === 0 && !this.props.searchFilter && this.props.extraTiles.length === 0) {
-            content = this.props.emptyContent;
+        if (this.state.sortedList.length === 0) {
+            // check if emptyContent is defined, if falsey then don't show an empty sublist even without searchFilter
+            if (!this.props.searchFilter && this.props.extraTiles.length === 0 && this.props.emptyContent) {
+                content = this.props.emptyContent;
+            } else {
+                // don't show an empty sublist
+                return null;
+            }
         } else {
             content = this.makeRoomTiles();
             content.push(...this.props.extraTiles);
