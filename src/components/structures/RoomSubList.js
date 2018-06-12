@@ -1,4 +1,5 @@
 /*
+Copyright 2018 New Vector Ltd
 Copyright 2017 Vector Creations Ltd
 Copyright 2015, 2016 OpenMarket Ltd
 
@@ -15,30 +16,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-'use strict';
-
-var React = require('react');
-var ReactDOM = require('react-dom');
-var classNames = require('classnames');
-var sdk = require('../../index');
+import React from 'react';
+import classNames from 'classnames';
+import sdk from '../../index';
 import { Droppable } from 'react-beautiful-dnd';
 import { _t } from '../../languageHandler';
-var dis = require('../../dispatcher');
-var Unread = require('../../Unread');
-var MatrixClientPeg = require('../../MatrixClientPeg');
-var RoomNotifs = require('../../RoomNotifs');
-var FormattingUtils = require('../../utils/FormattingUtils');
-var AccessibleButton = require('../../components/views/elements/AccessibleButton');
-import Modal from '../../Modal';
+import dis from '../../dispatcher';
+import Unread from '../../Unread';
+import * as RoomNotifs from '../../RoomNotifs';
+import * as FormattingUtils from '../../utils/FormattingUtils';
 import { KeyCode } from '../../Keyboard';
 
 
 // turn this on for drop & drag console debugging galore
-var debug = false;
+const debug = false;
 
 const TRUNCATE_AT = 10;
 
-var RoomSubList = React.createClass({
+const RoomSubList = React.createClass({
     displayName: 'RoomSubList',
 
     debug: debug,
@@ -106,19 +101,15 @@ var RoomSubList = React.createClass({
     applySearchFilter: function(list, filter) {
         if (filter === "") return list;
         return list.filter((room) => {
-            return room.name && room.name.toLowerCase().indexOf(filter.toLowerCase()) >= 0
+            return room.name && room.name.toLowerCase().indexOf(filter.toLowerCase()) >= 0;
         });
     },
 
     // The header is collapsable if it is hidden or not stuck
     // The dataset elements are added in the RoomList _initAndPositionStickyHeaders method
     isCollapsableOnClick: function() {
-        var stuck = this.refs.header.dataset.stuck;
-        if (this.state.hidden || stuck === undefined || stuck === "none") {
-            return true;
-        } else {
-            return false;
-        }
+        const stuck = this.refs.header.dataset.stuck;
+        return Boolean(this.state.hidden || stuck === undefined || stuck === "none");
     },
 
     onAction: function(payload) {
@@ -139,12 +130,12 @@ var RoomSubList = React.createClass({
     onClick: function(ev) {
         if (this.isCollapsableOnClick()) {
             // The header isCollapsable, so the click is to be interpreted as collapse and truncation logic
-            var isHidden = !this.state.hidden;
-            this.setState({ hidden : isHidden });
+            const isHidden = !this.state.hidden;
+            this.setState({hidden: isHidden});
 
             if (isHidden) {
                 // as good a way as any to reset the truncate state
-                this.setState({ truncateAt : TRUNCATE_AT });
+                this.setState({truncateAt: TRUNCATE_AT});
             }
 
             this.props.onShowMoreRooms();
@@ -159,7 +150,7 @@ var RoomSubList = React.createClass({
         dis.dispatch({
             action: 'view_room',
             room_id: roomId,
-            clear_search: (ev && (ev.keyCode == KeyCode.ENTER || ev.keyCode == KeyCode.SPACE)),
+            clear_search: (ev && (ev.keyCode === KeyCode.ENTER || ev.keyCode === KeyCode.SPACE)),
         });
     },
 
@@ -169,17 +160,17 @@ var RoomSubList = React.createClass({
     },
 
     _shouldShowMentionBadge: function(roomNotifState) {
-        return roomNotifState != RoomNotifs.MUTE;
+        return roomNotifState !== RoomNotifs.MUTE;
     },
 
     /**
      * Total up all the notification counts from the rooms
      *
-     * @param {Number} If supplied will only total notifications for rooms outside the truncation number
+     * @param {Number} truncateAt If supplied will only total notifications for rooms outside the truncation number
      * @returns {Array} The array takes the form [total, highlight] where highlight is a bool
      */
     roomNotificationCount: function(truncateAt) {
-        var self = this;
+        const self = this;
 
         if (this.props.isInvite) {
             return [0, true];
@@ -187,9 +178,9 @@ var RoomSubList = React.createClass({
 
         return this.props.list.reduce(function(result, room, index) {
             if (truncateAt === undefined || index >= truncateAt) {
-                var roomNotifState = RoomNotifs.getRoomNotifsState(room.roomId);
-                var highlight = room.getUnreadNotificationCount('highlight') > 0;
-                var notificationCount = room.getUnreadNotificationCount();
+                const roomNotifState = RoomNotifs.getRoomNotifsState(room.roomId);
+                const highlight = room.getUnreadNotificationCount('highlight') > 0;
+                const notificationCount = room.getUnreadNotificationCount();
 
                 const notifBadges = notificationCount > 0 && self._shouldShowNotifBadge(roomNotifState);
                 const mentionBadges = highlight && self._shouldShowMentionBadge(roomNotifState);
@@ -239,27 +230,25 @@ var RoomSubList = React.createClass({
     },
 
     _getHeaderJsx: function() {
-        var TintableSvg = sdk.getComponent("elements.TintableSvg");
+        const subListNotifications = this.roomNotificationCount();
+        const subListNotifCount = subListNotifications[0];
+        const subListNotifHighlight = subListNotifications[1];
 
-        var subListNotifications = this.roomNotificationCount();
-        var subListNotifCount = subListNotifications[0];
-        var subListNotifHighlight = subListNotifications[1];
+        const totalTiles = this.props.list.length + (this.props.extraTiles || []).length;
+        const roomCount = totalTiles > 0 ? totalTiles : '';
 
-        var totalTiles = this.props.list.length + (this.props.extraTiles || []).length;
-        var roomCount = totalTiles > 0 ? totalTiles : '';
-
-        var chevronClasses = classNames({
+        const chevronClasses = classNames({
             'mx_RoomSubList_chevron': true,
             'mx_RoomSubList_chevronRight': this.state.hidden,
             'mx_RoomSubList_chevronDown': !this.state.hidden,
         });
 
-        var badgeClasses = classNames({
+        const badgeClasses = classNames({
             'mx_RoomSubList_badge': true,
             'mx_RoomSubList_badgeHighlight': subListNotifHighlight,
         });
 
-        var badge;
+        let badge;
         if (subListNotifCount > 0) {
             badge = <div className={badgeClasses}>{ FormattingUtils.formatCount(subListNotifCount) }</div>;
         } else if (this.props.isInvite) {
@@ -269,7 +258,7 @@ var RoomSubList = React.createClass({
 
         // When collapsed, allow a long hover on the header to show user
         // the full tag name and room count
-        var title;
+        let title;
         if (this.props.collapsed) {
             title = this.props.label;
             if (roomCount !== '') {
@@ -277,28 +266,30 @@ var RoomSubList = React.createClass({
             }
         }
 
-        var incomingCall;
+        let incomingCall;
         if (this.props.incomingCall) {
-            var self = this;
+            const self = this;
             // Check if the incoming call is for this section
-            var incomingCallRoom = this.props.list.filter(function(room) {
+            const incomingCallRoom = this.props.list.filter(function(room) {
                 return self.props.incomingCall.roomId === room.roomId;
             });
 
             if (incomingCallRoom.length === 1) {
-                var IncomingCallBox = sdk.getComponent("voip.IncomingCallBox");
-                incomingCall = <IncomingCallBox className="mx_RoomSubList_incomingCall" incomingCall={ this.props.incomingCall }/>;
+                const IncomingCallBox = sdk.getComponent("voip.IncomingCallBox");
+                incomingCall =
+                    <IncomingCallBox className="mx_RoomSubList_incomingCall" incomingCall={this.props.incomingCall} />;
             }
         }
 
-        var tabindex = this.props.searchFilter === "" ? "0" : "-1";
+        const tabindex = this.props.searchFilter === "" ? "0" : "-1";
 
+        const AccessibleButton = sdk.getComponent('elements.AccessibleButton');
         return (
             <div className="mx_RoomSubList_labelContainer" title={ title } ref="header">
                 <AccessibleButton onClick={ this.onClick } className="mx_RoomSubList_label" tabIndex={tabindex}>
                     { this.props.collapsed ? '' : this.props.label }
                     <div className="mx_RoomSubList_roomCount">{ roomCount }</div>
-                    <div className={chevronClasses}></div>
+                    <div className={chevronClasses} />
                     { badge }
                     { incomingCall }
                 </AccessibleButton>
@@ -307,24 +298,25 @@ var RoomSubList = React.createClass({
     },
 
     _createOverflowTile: function(overflowCount, totalCount) {
-        var content = <div className="mx_RoomSubList_chevronDown"></div>;
+        let content = <div className="mx_RoomSubList_chevronDown" />;
 
-        var overflowNotifications = this.roomNotificationCount(TRUNCATE_AT);
-        var overflowNotifCount = overflowNotifications[0];
-        var overflowNotifHighlight = overflowNotifications[1];
+        const overflowNotifications = this.roomNotificationCount(TRUNCATE_AT);
+        const overflowNotifCount = overflowNotifications[0];
+        const overflowNotifHighlight = overflowNotifications[1];
         if (overflowNotifCount && !this.props.collapsed) {
             content = FormattingUtils.formatCount(overflowNotifCount);
         }
 
-        var badgeClasses = classNames({
+        const badgeClasses = classNames({
             'mx_RoomSubList_moreBadge': true,
             'mx_RoomSubList_moreBadgeNotify': overflowNotifCount && !this.props.collapsed,
             'mx_RoomSubList_moreBadgeHighlight': overflowNotifHighlight && !this.props.collapsed,
         });
 
+        const AccessibleButton = sdk.getComponent('elements.AccessibleButton');
         return (
             <AccessibleButton className="mx_RoomSubList_ellipsis" onClick={this._showFullMemberList}>
-                <div className="mx_RoomSubList_line"></div>
+                <div className="mx_RoomSubList_line" />
                 <div className="mx_RoomSubList_more">{ _t("more") }</div>
                 <div className={ badgeClasses }>{ content }</div>
             </AccessibleButton>
@@ -332,19 +324,13 @@ var RoomSubList = React.createClass({
     },
 
     _showFullMemberList: function() {
-        this.setState({
-            truncateAt: -1
-        });
-
+        this.setState({truncateAt: -1});
         this.props.onShowMoreRooms();
         this.props.onHeaderClick(false);
     },
 
     render: function() {
-        var connectDropTarget = this.props.connectDropTarget;
-        var TruncatedList = sdk.getComponent('elements.TruncatedList');
-
-        var label = this.props.collapsed ? null : this.props.label;
+        const TruncatedList = sdk.getComponent('elements.TruncatedList');
 
         let content;
         if (this.state.sortedList.length === 0) {
@@ -361,16 +347,15 @@ var RoomSubList = React.createClass({
         }
 
         if (this.state.sortedList.length > 0 || this.props.extraTiles.length > 0 || this.props.editable) {
-            var subList;
-            var classes = "mx_RoomSubList";
+            let subList;
+            const classes = "mx_RoomSubList";
 
             if (!this.state.hidden) {
                 subList = <TruncatedList className={ classes } truncateAt={this.state.truncateAt}
                                          createOverflowElement={this._createOverflowTile} >
                                 { content }
                           </TruncatedList>;
-            }
-            else {
+            } else {
                 subList = <TruncatedList className={ classes }>
                           </TruncatedList>;
             }
@@ -391,9 +376,8 @@ var RoomSubList = React.createClass({
                         </div>
                     ) }
                 </Droppable> : subListContent;
-        }
-        else {
-            var Loader = sdk.getComponent("elements.Spinner");
+        } else {
+            const Loader = sdk.getComponent("elements.Spinner");
             return (
                 <div className="mx_RoomSubList">
                     { this.props.alwaysShowHeader ? this._getHeaderJsx() : undefined }
@@ -401,7 +385,7 @@ var RoomSubList = React.createClass({
                 </div>
             );
         }
-    }
+    },
 });
 
 module.exports = RoomSubList;
